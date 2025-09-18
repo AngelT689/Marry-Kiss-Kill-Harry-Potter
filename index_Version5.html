@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harry Potter: Kiss, Marry, Kill</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background-color: #FDFBF6;
+            color: #4A2E2B;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 2px solid #D8C6A5;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        .card.selected-kiss { border-color: #E57373; }
+        .card.selected-marry { border-color: #66BB6A; }
+        .card.selected-kill { border-color: #757575; }
+        .btn {
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .btn:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+        .btn-kiss { background-color: #E57373; border-bottom: 4px solid #D32F2F; }
+        .btn-marry { background-color: #66BB6A; border-bottom: 4px solid #388E3C; }
+        .btn-kill { background-color: #757575; border-bottom: 4px solid #424242; }
+        .btn:disabled {
+            background-color: #BDBDBD;
+            border-bottom-color: #757575;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .btn-utility {
+            background-color: #F8E7D3;
+            color: #4A2E2B;
+            border: 2px solid #D8C6A5;
+        }
+        pre.history-table {
+            background: #f8f8f8;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 8px;
+            font-family: 'Menlo', 'Consolas', monospace;
+            overflow-x: auto;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-4xl text-center">
+        <header class="mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-wider" style="font-family: 'Cinzel', serif;">Harry Potter</h1>
+            <h2 class="text-2xl md:text-3xl text-amber-800">Kiss, Marry, Kill</h2>
+            <p class="mt-2 text-stone-600">Get ready for an unforgettable "Kiss, Marry, Kill" game with your favorite characters from the Harry Potter universe! In each round, choose one character to kiss, one to marry, and one to kill. Let's see how tough your choices will be!</p>
+        </header>
+
+        <main id="game-container" class="w-full flex-grow flex flex-col items-center">
+            <div id="game-info" class="flex justify-between items-center w-full max-w-sm mb-4">
+                <div id="score-container" class="text-xl font-bold text-amber-900">Score: <span id="current-score">0</span></div>
+                <div id="timer-container" class="text-xl font-bold text-red-600">Time: <span id="timer-display">5:00</span></div>
+            </div>
+            <div id="character-cards" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 min-h-[220px] w-full"></div>
+            <div id="action-buttons" class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
+                <button id="kiss-btn" data-action="kiss" class="btn btn-kiss text-white font-bold py-3 px-8 rounded-lg shadow-lg w-full sm:w-auto">Kiss</button>
+                <button id="marry-btn" data-action="marry" class="btn btn-marry text-white font-bold py-3 px-8 rounded-lg shadow-lg w-full sm:w-auto">Marry</button>
+                <button id="kill-btn" data-action="kill" class="btn btn-kill text-white font-bold py-3 px-8 rounded-lg shadow-lg w-full sm:w-auto">Kill</button>
+            </div>
+            <div id="message-area" class="text-lg text-amber-900 font-semibold min-h-[28px] mb-4"></div>
+            <button id="next-round-btn" class="bg-amber-700 hover:bg-amber-800 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-colors duration-200 hidden">Next Round</button>
+            <button id="restart-btn" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-colors duration-200 hidden">Restart Game</button>
+        </main>
+
+        <section id="history-section" class="mt-12 w-full max-w-2xl mx-auto">
+            <h3 class="text-2xl font-bold border-b-2 border-amber-700 pb-2 mb-4">Selection History</h3>
+            <div id="history-buttons" class="flex justify-center gap-4 mb-4">
+                <button id="copy-btn" class="btn-utility font-semibold py-2 px-4 rounded-lg shadow-md">Copy to Clipboard</button>
+                <button id="download-btn" class="btn-utility font-semibold py-2 px-4 rounded-lg shadow-md">Download History</button>
+            </div>
+            <div id="history-list" class="space-y-2 text-left"></div>
+        </section>
+    </div>
+
+    <script>
+        const characters = [
+            { id: 1, name: 'Harry Potter', movie: 'Prisoner of Azkaban' },
+            { id: 2, name: 'Hermione Granger', movie: 'Deathly Hallows: Part 1' },
+            { id: 3, name: 'Ron Weasley', movie: 'Philosopher\'s Stone' },
+            { id: 4, name: 'Draco Malfoy', movie: 'Half-Blood Prince' },
+            { id: 5, name: 'Severus Snape', movie: 'Deathly Hallows: Part 2' },
+            { id: 6, name: 'Albus Dumbledore', movie: 'Half-Blood Prince' },
+            { id: 7, name: 'Sirius Black', movie: 'Prisoner of Azkaban' },
+            { id: 8, name: 'Luna Lovegood', movie: 'Order of the Phoenix' },
+            { id: 9, name: 'Neville Longbottom', movie: 'Deathly Hallows: Part 2' },
+            { id: 10, name: 'Ginny Weasley', movie: 'Half-Blood Prince' },
+            { id: 11, name: 'Fred & George Weasley', movie: 'Order of the Phoenix' },
+            { id: 12, name: 'Remus Lupin', movie: 'Prisoner of Azkaban' },
+            { id: 13, name: 'Rubeus Hagrid', movie: 'Philosopher\'s Stone' },
+            { id: 14, name: 'Dobby', movie: 'Chamber of Secrets' },
+            { id: 15, name: 'Minerva McGonagall', movie: 'Philosopher\'s Stone' },
+            { id: 16, name: 'Cedric Diggory', movie: 'Goblet of Fire' },
+            { id: 17, name: 'Molly Weasley', movie: 'Chamber of Secrets' },
+            { id: 18, name: 'Arthur Weasley', movie: 'Chamber of Secrets' },
+            { id: 19, name: 'Nymphadora Tonks', movie: 'Order of the Phoenix' },
+            { id: 20, name: 'Kingsley Shacklebolt', movie: 'Order of the Phoenix' },
+            { id: 21, name: 'Hedwig', movie: 'Philosopher\'s Stone' },
+            { id: 22, name: 'Kreacher', movie: 'Order of the Phoenix' },
+            { id: 23, name: 'Fawkes', movie: 'Chamber of Secrets' },
+            { id: 24, name: 'Rufus Scrimgeour', movie: 'Deathly Hallows: Part 1' },
+            { id: 25, name: 'Lord Voldemort', movie: 'Goblet of Fire' },
+            { id: 26, name: 'Dolores Umbridge', movie: 'Order of the Phoenix' },
+            { id: 27, name: 'Cornelius Fudge', movie: 'Prisoner of Azkaban' },
+            { id: 28, name: 'Peter Pettigrew', movie: 'Prisoner of Azkaban' },
+            { id: 29, name: 'Vernon Dursley', movie: 'Philosopher\'s Stone' },
+            { id: 30, name: 'Petunia Dursley', movie: 'Philosopher\'s Stone' },
+            { id: 31, name: 'Dudley Dursley', movie: 'Philosopher\'s Stone' },
+            { id: 32, name: 'Gilderoy Lockhart', movie: 'Chamber of Secrets' },
+            { id: 33, name: 'Argus Filch', movie: 'Chamber of Secrets' },
+            { id: 34, name: 'Lucius Malfoy', movie: 'Chamber of Secrets' },
+            { id: 35, name: 'Walden Macnair', movie: 'Prisoner of Azkaban' },
+            { id: 36, name: 'Barty Crouch Jr.', movie: 'Goblet of Fire' },
+            { id: 37, name: 'Igor Karkaroff', movie: 'Goblet of Fire' },
+            { id: 38, name: 'Bellatrix Lestrange', movie: 'Order of the Phoenix' },
+            { id: 39, name: 'Fenrir Greyback', movie: 'Half-Blood Prince' },
+            { id: 40, name: 'Mundungus Fletcher', movie: 'Deathly Hallows: Part 1' },
+            { id: 41, name: 'Vincent Crabbe', movie: 'Chamber of Secrets' },
+            { id: 42, name: 'Gregory Goyle', movie: 'Chamber of Secrets' },
+            { id: 43, name: 'Tom Riddle', movie: 'Chamber of Secrets' },
+            { id: 44, name: 'Ludo Bagman', movie: 'Books Only' },
+            { id: 45, name: 'Winky', movie: 'Books Only' },
+            { id: 46, name: 'Peeves', movie: 'Books Only' },
+            { id: 47, name: 'Charlie Weasley', movie: 'Books Only' },
+            { id: 48, name: 'Andromeda Tonks', movie: 'Books Only' },
+            { id: 49, name: 'Augusta Longbottom', movie: 'Books Only' },
+            { id: 50, name: 'Phineas Nigellus Black', movie: 'Books Only' },
+            { id: 51, name: 'Ted Tonks', movie: 'Books Only' },
+            { id: 52, name: 'Frank Longbottom', movie: 'Books Only' },
+            { id: 53, name: 'Alice Longbottom', movie: 'Books Only' },
+            { id: 54, name: 'Hepzibah Smith', movie: 'Books Only' },
+            { id: 55, name: 'Merope Gaunt', movie: 'Books Only' },
+            { id: 56, name: 'Morfin Gaunt', movie: 'Books Only' },
+            { id: 57, name: 'Elphias Doge', movie: 'Books Only' },
+            { id: 58, name: 'Dedalus Diggle', movie: 'Books Only' },
+            { id: 59, name: 'Barty Crouch Sr.', movie: 'Books Only' },
+            { id: 60, name: 'Professor Grubbly-Plank', movie: 'Books Only' },
+            { id: 61, name: 'Regulus Black', movie: 'Books Only' },
+            { id: 62, name: 'Teddy Lupin', movie: 'Books Only' },
+            { id: 63, name: 'Marvolo Gaunt', movie: 'Books Only' },
+            { id: 64, name: 'Doris Crockford', movie: 'Books Only' },
+            { id: 65, name: 'Stan Shunpike', movie: 'Books Only' },
+            { id: 66, name: 'Madam Rosmerta', movie: 'Books Only' },
+            { id: 67, name: 'Professor Binns', movie: 'Books Only' },
+            { id: 68, name: 'Professor Vector', movie: 'Books Only' }
+        ];
+
+        let availableCharacters = [];
+        let currentRoundCharacters = [];
+        let currentSelections = { kiss: null, marry: null, kill: null };
+        let selectedAction = null;
+        let history = [];
+        let score = 0;
+        let timerInterval;
+        let timeLeft = 300; // 5 minutes
+
+        const characterCardsContainer = document.getElementById('character-cards');
+        const actionButtonsContainer = document.getElementById('action-buttons');
+        const nextRoundBtn = document.getElementById('next-round-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const messageArea = document.getElementById('message-area');
+        const historyList = document.getElementById('history-list');
+        const copyBtn = document.getElementById('copy-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const currentScoreElement = document.getElementById('current-score');
+        const timerDisplay = document.getElementById('timer-display');
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function renderCharacters() {
+            characterCardsContainer.innerHTML = '';
+            currentRoundCharacters.forEach(char => {
+                const card = document.createElement('div');
+                card.className = 'card p-4 rounded-lg shadow-md flex flex-col justify-center items-center cursor-pointer min-h-[150px]';
+                card.dataset.characterId = char.id;
+                card.innerHTML = `
+                    <h4 class="text-xl font-bold text-amber-900 text-center">${char.name}</h4>
+                    <p class="text-sm text-stone-500 italic mt-1 text-center">${char.movie}</p>
+                `;
+                card.addEventListener('click', () => handleCharacterClick(char.id));
+                characterCardsContainer.appendChild(card);
+            });
+        }
+
+        function updateActionButtonStates() {
+            Object.keys(currentSelections).forEach(action => {
+                const btn = document.querySelector(`[data-action="${action}"]`);
+                if(btn){
+                    btn.disabled = currentSelections[action] !== null || timeLeft <= 0;
+                }
+            });
+        }
+
+        function handleActionClick(action) {
+            if (timeLeft <= 0) return;
+            selectedAction = action;
+            messageArea.textContent = `Who do you want to ${action}? Select a character.`;
+            document.querySelectorAll('#action-buttons button').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-amber-700'));
+            document.querySelector(`[data-action="${action}"]`).classList.add('ring-2', 'ring-offset-2', 'ring-amber-700');
+        }
+
+        function handleCharacterClick(characterId) {
+            if (timeLeft <= 0) return;
+            if (!selectedAction) {
+                messageArea.textContent = 'Please select an action (Kiss, Marry, or Kill) first.';
+                return;
+            }
+            if (Object.values(currentSelections).includes(characterId)) {
+                messageArea.textContent = 'This character is already selected. Choose another one.';
+                return;
+            }
+            currentSelections[selectedAction] = characterId;
+            document.querySelectorAll('.card').forEach(c => c.classList.remove(`selected-${selectedAction}`));
+            const selectedCard = document.querySelector(`[data-character-id='${characterId}']`);
+            if(selectedCard) {
+                selectedCard.classList.add(`selected-${selectedAction}`);
+            }
+            selectedAction = null;
+            messageArea.textContent = '';
+            document.querySelectorAll('#action-buttons button').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-amber-700'));
+            updateActionButtonStates();
+            checkForRoundCompletion();
+        }
+
+        function checkForRoundCompletion() {
+            if (Object.values(currentSelections).every(val => val !== null)) {
+                score += 10; // Kiss
+                score += 10; // Marry
+                score -= 5;  // Kill
+                currentScoreElement.textContent = score;
+
+                messageArea.textContent = 'Round completed! You can go to the next round.';
+                nextRoundBtn.classList.remove('hidden');
+                history.push({...currentSelections});
+                updateHistory();
+                document.querySelectorAll('.card').forEach(c => c.style.cursor = 'default');
+            }
+        }
+
+        function updateHistory() {
+            historyList.innerHTML = '';
+            if (history.length > 0) {
+                // Table-style
+                let tableText = "Round | Kiss           | Marry          | Kill\n";
+                tableText += "-----------------------------------------------\n";
+                history.forEach((round, index) => {
+                    const kissChar = characters.find(c => c.id === round.kiss).name;
+                    const marryChar = characters.find(c => c.id === round.marry).name;
+                    const killChar = characters.find(c => c.id === round.kill).name;
+                    tableText += `${(index + 1).toString().padEnd(5)}| ${kissChar.padEnd(15)}| ${marryChar.padEnd(15)}| ${killChar}\n`;
+                });
+                const pre = document.createElement('pre');
+                pre.className = 'history-table';
+                pre.textContent = tableText;
+                historyList.appendChild(pre);
+            }
+            // Also show as cards
+            [...history].reverse().forEach((round) => {
+                const kissChar = characters.find(c => c.id === round.kiss).name;
+                const marryChar = characters.find(c => c.id === round.marry).name;
+                const killChar = characters.find(c => c.id === round.kill).name;
+                const entry = document.createElement('div');
+                entry.className = 'bg-white p-3 rounded-md shadow-sm text-sm';
+                entry.innerHTML = `
+                    <div class="flex gap-4">
+                        <div><span class="font-bold text-red-500">Kiss:</span> ${kissChar}</div>
+                        <div><span class="font-bold text-green-600">Marry:</span> ${marryChar}</div>
+                        <div><span class="font-bold text-gray-700">Kill:</span> ${killChar}</div>
+                    </div>
+                `;
+                historyList.appendChild(entry);
+            });
+        }
+
+        function getHistoryAsText() {
+            let txt = "Round | Kiss           | Marry          | Kill\n";
+            txt += "-----------------------------------------------\n";
+            history.forEach((round, index) => {
+                const kissChar = characters.find(c => c.id === round.kiss).name;
+                const marryChar = characters.find(c => c.id === round.marry).name;
+                const killChar = characters.find(c => c.id === round.kill).name;
+                txt += `${(index + 1).toString().padEnd(5)}| ${kissChar.padEnd(15)}| ${marryChar.padEnd(15)}| ${killChar}\n`;
+            });
+            return txt;
+        }
+
+        function downloadHistory() {
+            if (history.length === 0) {
+                messageArea.textContent = 'There is no history to download.';
+                return;
+            }
+            const historyText = getHistoryAsText();
+            const blob = new Blob([historyText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hp_game_history.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            messageArea.textContent = 'History downloaded successfully!';
+        }
+
+        function copyHistoryToClipboard() {
+            if (history.length === 0) {
+                messageArea.textContent = 'There is no history to copy.';
+                return;
+            }
+            const historyText = getHistoryAsText();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(historyText)
+                    .then(() => {
+                        messageArea.textContent = 'History copied to clipboard!';
+                    })
+                    .catch(err => {
+                        fallbackCopyTextToClipboard(historyText);
+                    });
+            } else {
+                fallbackCopyTextToClipboard(historyText);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.top = 0;
+            textArea.style.left = 0;
+            textArea.style.width = '2em';
+            textArea.style.height = '2em';
+            textArea.style.padding = 0;
+            textArea.style.border = 'none';
+            textArea.style.outline = 'none';
+            textArea.style.boxShadow = 'none';
+            textArea.style.background = 'transparent';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                messageArea.textContent = 'History copied to clipboard!';
+            } catch (err) {
+                messageArea.textContent = 'Could not copy to clipboard.';
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function startTimer() {
+            timeLeft = 300;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+                updateActionButtonStates();
+            }, 1000);
+            updateActionButtonStates();
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            messageArea.textContent = 'Time is up! Game over.';
+            characterCardsContainer.innerHTML = '<div class="md:col-span-3 text-center text-2xl font-bold text-red-600">Game Over!</div>';
+            document.querySelectorAll('#action-buttons button').forEach(b => b.disabled = true);
+            nextRoundBtn.classList.add('hidden');
+            restartBtn.classList.remove('hidden');
+        }
+
+        function startNewRound() {
+            if (timeLeft <= 0) return;
+            if (availableCharacters.length < 3) {
+                endGame();
+                return;
+            }
+            currentRoundCharacters = availableCharacters.splice(0, 3);
+            currentSelections = { kiss: null, marry: null, kill: null };
+            selectedAction = null;
+            renderCharacters();
+            updateActionButtonStates();
+            messageArea.textContent = 'Start by choosing an action.';
+            nextRoundBtn.classList.add('hidden');
+            document.querySelectorAll('.card').forEach(c => c.style.cursor = 'pointer');
+        }
+
+        function resetGame() {
+            clearInterval(timerInterval);
+            score = 0;
+            history = [];
+            availableCharacters = [...characters];
+            shuffleArray(availableCharacters);
+            currentScoreElement.textContent = score;
+            historyList.innerHTML = '';
+            restartBtn.classList.add('hidden');
+            document.querySelectorAll('#action-buttons button').forEach(b => b.disabled = false);
+            startTimer();
+            startNewRound();
+        }
+
+        function initGame() {
+            copyBtn.addEventListener('click', copyHistoryToClipboard);
+            downloadBtn.addEventListener('click', downloadHistory);
+            nextRoundBtn.addEventListener('click', startNewRound);
+            restartBtn.addEventListener('click', resetGame);
+            document.querySelectorAll('#action-buttons button').forEach(button => {
+                button.addEventListener('click', () => {
+                   handleActionClick(button.dataset.action);
+                });
+            });
+            resetGame();
+        }
+
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
